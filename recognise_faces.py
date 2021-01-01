@@ -11,10 +11,11 @@ class FaceRecognition(object):
     _default_name = 'Unknown'
     _factor = 3  # 1 for best recognition, 4 and up for better performance
 
-    def __init__(self):
+    def __init__(self, camera_idx=0):
         self._faces_encodings = list()
         self._faces_names = list()
         self._video_capture = None
+        self._camera_idx = camera_idx
 
     def _load_faces(self):
         print('Loading faces...')
@@ -31,16 +32,17 @@ class FaceRecognition(object):
             except Exception as e:
                 print(f'Probably not a face: {f}... Error: {e}')
         print('Done')
+        return len(self._faces_names)
 
     def _get_capture(self):
         cv2.namedWindow(self._win_title, cv2.WINDOW_NORMAL)
-        self._video_capture = cv2.VideoCapture(0)
+        self._video_capture = cv2.VideoCapture(self._camera_idx)
+        return self._video_capture.isOpened()
 
     def _end_capture(self):
         self._video_capture.release()
         cv2.destroyAllWindows()
 
-    # @profile
     def _process_frame(self, frame):
         # Scale down for faster processing
         small_frame = cv2.resize(frame, (0, 0), fx=1/self._factor, fy=1/self._factor)
@@ -101,14 +103,27 @@ class FaceRecognition(object):
             elif key == ord('f'):
                 start_processing = not start_processing
 
+    @staticmethod
+    def test_cameras():
+        for idx in range(10):
+            vid_cap = cv2.VideoCapture(idx)
+            if vid_cap.isOpened():
+                print(f'Camera found: {idx}')
+                vid_cap.release()
+
     def start(self):
-        self._load_faces()
-        self._get_capture()
+        if self._load_faces() <= 0:
+            print('No faces loaded!')
+            return
+        if not self._get_capture():
+            print(f'Invalid camera index entered: {self._camera_idx}\nTesting more indexes ->')
+            self.test_cameras()
+            return
         self._recognise()
         self._end_capture()
 
 
 if __name__ == '__main__':
-    test = FaceRecognition()
+    test = FaceRecognition(camera_idx=2)
     test.start()
 
