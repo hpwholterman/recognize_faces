@@ -93,7 +93,15 @@ class FaceRecognition(object):
                         color=(255, 255, 255),
                         thickness=1)
 
-    def _recognise(self):
+    @staticmethod
+    def test_cameras():
+        for idx in range(10):
+            vid_cap = cv2.VideoCapture(idx)
+            if vid_cap.isOpened():
+                print(f'Camera found: {idx}')
+                vid_cap.release()
+
+    def start(self):
         cv2.namedWindow(self._win_title, cv2.WINDOW_NORMAL)
         start_processing = False
         while True:
@@ -108,30 +116,15 @@ class FaceRecognition(object):
                 break
             elif key == ord('f'):
                 start_processing = not start_processing
+        self._end_capture()
 
-    def _gen_stream(self):
+    def stream(self):
         while True:
             ret, frame = self._video_capture.read()
             self._process_frame(frame)
             ret, jpeg = cv2.imencode('.jpg', frame)
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
-
-    @staticmethod
-    def test_cameras():
-        for idx in range(10):
-            vid_cap = cv2.VideoCapture(idx)
-            if vid_cap.isOpened():
-                print(f'Camera found: {idx}')
-                vid_cap.release()
-
-    def start(self):
-        self._recognise()
-
-    def stream(self):
-        for fr in self._gen_stream():
-            yield fr
-        self._end_capture()
 
 
 if __name__ == '__main__':
