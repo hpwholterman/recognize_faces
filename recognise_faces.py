@@ -16,6 +16,12 @@ class FaceRecognition(object):
         self._faces_names = list()
         self._video_capture = None
         self._camera_idx = camera_idx
+        if self._load_faces() <= 0:
+            raise Exception('No faces loaded!')
+        if not self._get_capture():
+            print(f'Invalid camera index entered: {self._camera_idx}\nTesting more indexes ->')
+            self.test_cameras()
+            raise Exception('No camera')
 
     def _load_faces(self):
         print('Loading faces...')
@@ -35,7 +41,6 @@ class FaceRecognition(object):
         return len(self._faces_names)
 
     def _get_capture(self):
-        cv2.namedWindow(self._win_title, cv2.WINDOW_NORMAL)
         self._video_capture = cv2.VideoCapture(self._camera_idx)
         return self._video_capture.isOpened()
 
@@ -89,6 +94,7 @@ class FaceRecognition(object):
                         thickness=1)
 
     def _recognise(self):
+        cv2.namedWindow(self._win_title, cv2.WINDOW_NORMAL)
         start_processing = False
         while True:
             ret, frame = self._video_capture.read()
@@ -103,6 +109,14 @@ class FaceRecognition(object):
             elif key == ord('f'):
                 start_processing = not start_processing
 
+    def _gen_stream(self):
+        while True:
+            ret, frame = self._video_capture.read()
+            self._process_frame(frame)
+            ret, jpeg = cv2.imencode('.jpg', frame)
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+
     @staticmethod
     def test_cameras():
         for idx in range(10):
@@ -112,18 +126,15 @@ class FaceRecognition(object):
                 vid_cap.release()
 
     def start(self):
-        if self._load_faces() <= 0:
-            print('No faces loaded!')
-            return
-        if not self._get_capture():
-            print(f'Invalid camera index entered: {self._camera_idx}\nTesting more indexes ->')
-            self.test_cameras()
-            return
         self._recognise()
+
+    def stream(self):
+        for fr in self._gen_stream():
+            yield fr
         self._end_capture()
 
 
 if __name__ == '__main__':
-    test = FaceRecognition(camera_idx=2)
+    test = FaceRecognition(camera_idx=0)
     test.start()
 
